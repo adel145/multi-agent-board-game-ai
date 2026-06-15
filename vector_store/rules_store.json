@@ -1,0 +1,18 @@
+[
+  {
+    "game": "tic_tac_toe",
+    "text": "# Tic-Tac-Toe\nTic-Tac-Toe uses a 3x3 grid. Players X and O alternate placing marks in empty\ncells. A player wins by making three in a row horizontally, vertically, or\ndiagonally. If the grid fills without a line, the game is a draw."
+  },
+  {
+    "game": "connect_four",
+    "text": "# Connect Four\nConnect Four uses a vertical 6x7 board. Players drop discs into columns; the\ndisc falls to the lowest empty slot. A player wins by connecting four discs\nhorizontally, vertically, or diagonally. If no columns remain and no player has\nfour in a row, the game is a draw."
+  },
+  {
+    "game": "othello",
+    "text": "# Othello / Reversi\nOthello uses an 8x8 board with four center discs at the start. A legal move\nplaces a disc so one or more opponent discs are bracketed in a straight line\nbetween the new disc and another friendly disc. Bracketed discs flip color.\nIf a player has no legal move, the player passes. The game ends when neither\nplayer can move or the board is full; the higher disc count wins."
+  },
+  {
+    "game": "gomoku",
+    "text": "# Gomoku / Five in a Row\nSimplified Gomoku uses a 9x9 square grid. Players place black and white stones\non empty cells. A player wins by forming five stones in a row horizontally,\nvertically, or diagonally. If the board fills first, the game is a draw."
+  }
+]
