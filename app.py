@@ -6,8 +6,6 @@ import streamlit as st
 from src.agents import SupervisorOrchestrator
 from src.game_interface import EMPTY, get_game
 from src.streamlit_helpers import list_test_images, make_ai_move, save_upload
-
-
 PROJECT_ROOT = Path(__file__).parent.resolve()
 
 
