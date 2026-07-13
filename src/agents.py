@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import time
+import urllib.request
 from pathlib import Path
 
 from .code_generation import SafeCodeGenerator
@@ -42,20 +43,77 @@ class VisionAgent(TraceMixin):
 
 class GameClassifierAgent(TraceMixin):
     def run(self, vision_result, trace):
-        text = vision_result["description"].lower()
-        scores = {
-            "tic_tac_toe": sum(token in text for token in ["3x3", "three by three", "tic", "toe", "x and o", "x/o"]),
-            "connect_four": sum(token in text for token in ["6x7", "six by seven", "connect", "vertical", "holes", "columns"]),
-            "othello": sum(token in text for token in ["8x8", "eight by eight", "othello", "reversi", "black and white discs", "center"]),
-            "gomoku": sum(token in text for token in ["gomoku", "five", "large square grid", "stones", "9x9", "nine by nine"]),
-        }
-        game_name = max(scores, key=scores.get)
-        if scores[game_name] == 0:
-            game_name = "tic_tac_toe"
-        explanation = self._explain(game_name)
-        self._trace(trace, "GameClassifierAgent", "Classify from visual features", f"{GAME_LABELS[game_name]} detected")
-        return {"game_name": game_name, "label": GAME_LABELS[game_name], "scores": scores, "explanation": explanation}
+        description = vision_result["description"]
+        
+        if not vision_result.get("ollama_live", True):
+            self._trace(trace, "GameClassifierAgent", "Fallback active", "Defaulting to Tic-Tac-Toe")
+            return {"game_name": "tic_tac_toe", "label": GAME_LABELS["tic_tac_toe"], "explanation": "Fallback default."}
 
+        # THIS is where the description variable is used!
+        prompt = f"""
+        You are a strict logic classifier for board games. Read the visual description and determine the game.
+        Ignore minor hallucinations and focus on these strict physical constraints:
+        
+        1. 'othello': Must be a FLAT board (often green or dark) with black and white discs. Discs are often placed in a square in the center. Ignore mentions of "holes" if the board is flat and the pieces are black/white.
+        2. 'connect_four': Must be a VERTICAL, standing board where pieces are dropped into columns. 
+        3. 'gomoku': Must be a LARGE flat grid (like a Go board) with scattered black and white stones.
+        4. 'tic_tac_toe': Must be a small 3x3 grid with X and O shapes.
+
+        Description to analyze: {description}
+        
+        Respond with ONLY a valid JSON object matching this exact format:
+        {{"game_key": "chosen_key", "explanation": "Brief one sentence explanation why."}}
+        """
+        
+        try:
+            payload = json.dumps({
+                "model": "llama3.2:3b",
+                "prompt": prompt,
+                "stream": False,
+                "format": "json" 
+            }).encode("utf-8")
+            
+            req = urllib.request.Request(
+                "http://localhost:11434/api/generate",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            
+            with urllib.request.urlopen(req, timeout=60) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                raw_reply = res_data.get("response", "{}")
+                
+                # --- BULLETPROOF PARSING LOGIC ---
+                clean_string = raw_reply.lower()
+                
+                # Scan the LLM's raw text for the obvious answer
+                if "connect_four" in clean_string or "connect four" in clean_string:
+                    game_name = "connect_four"
+                elif "othello" in clean_string or "reversi" in clean_string:
+                    game_name = "othello"
+                elif "gomoku" in clean_string or "five in a row" in clean_string:
+                    game_name = "gomoku"
+                else:
+                    game_name = "tic_tac_toe"
+                
+                # Try to extract the explanation if the JSON is valid, otherwise use a default
+                explanation = f"Classified as {GAME_LABELS[game_name]} based on LLM text analysis."
+                try:
+                    json_data = json.loads(raw_reply.replace("```json", "").replace("```", "").strip())
+                    if "explanation" in json_data:
+                        explanation = json_data["explanation"]
+                except:
+                    pass
+                    
+        except Exception as e:
+            game_name = "tic_tac_toe"
+            explanation = f"LLM classification failed ({str(e)}). Defaulted to Tic-Tac-Toe."
+
+        self._trace(trace, "GameClassifierAgent", "Classify using llama3.2:3b", f"{GAME_LABELS[game_name]} detected")
+        return {"game_name": game_name, "label": GAME_LABELS[game_name], "explanation": explanation}
+    
+    
     def _explain(self, game_name):
         explanations = {
             "tic_tac_toe": "The visual evidence points to a 3x3 X/O grid.",

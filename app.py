@@ -1,6 +1,6 @@
 from pathlib import Path
 import importlib.util
-
+import sys
 import streamlit as st
 
 from src.agents import SupervisorOrchestrator
@@ -27,33 +27,147 @@ def move_label(move):
 def load_playable_game(game_name):
     generated_path = PROJECT_ROOT / "generated_code" / "generated_game.py"
     if generated_path.exists():
+        # Clear the module from Python's cache if it exists
+        if "generated_game_runtime" in sys.modules:
+            del sys.modules["generated_game_runtime"]
+            
         spec = importlib.util.spec_from_file_location("generated_game_runtime", generated_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module.make_game()
     return get_game(game_name)
 
+def get_piece_label(game_name, cell):
+    """Maps the internal X and O logic to specific colored shapes."""
+    from src.game_interface import EMPTY
+    if cell == EMPTY:
+        return " "
+        
+    themes = {
+        "connect_four": {"X": "🔴", "O": "🟡"},  # Red and Yellow circles
+        "gomoku": {"X": "⚫", "O": "⚪"},        # Black and White stones
+        "othello": {"X": "⚫", "O": "⚪"},       # Black and White discs
+        "tic_tac_toe": {"X": "❌", "O": "⭕"}      # Stylized Cross and Ring
+    }
+    return themes.get(game_name, {}).get(cell, cell)
+
+
+def inject_dynamic_css(game_name):
+    """Injects CSS to theme the board background and button shapes based on the game."""
+    css = """
+    <style>
+    /* Base button text size and alignment */
+    div[data-testid="stButton"] button {
+        height: 70px;
+        width: 100%;
+        font-size: 32px !important;
+        font-weight: bold;
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    div[data-testid="stButton"] button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    """
+    
+    if game_name == "connect_four":
+        css += """
+        /* Classic blue vertical board */
+        div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stHorizontalBlock"] {
+            background-color: #1e40af; /* Deep blue */
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: inset 0 -4px 10px rgba(0,0,0,0.5);
+        }
+        /* Circular cutouts for the board */
+        div[data-testid="stButton"] button {
+            border-radius: 50%;
+            background-color: #0f172a; /* Dark empty hole */
+            border: 3px solid #1e3a8a;
+        }
+        """
+    elif game_name == "othello":
+        css += """
+        /* Green felt board with wood borders */
+        div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stHorizontalBlock"] {
+            background-color: #166534; /* Dark green felt */
+            padding: 8px;
+            border-radius: 4px;
+            border: 6px solid #452c10; /* Wood border */
+        }
+        div[data-testid="stButton"] button {
+            border-radius: 50%;
+            background-color: #14532d;
+            border: 1px solid #166534;
+        }
+        """
+    elif game_name == "gomoku":
+        css += """
+        /* Light wooden Go board */
+        div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stHorizontalBlock"] {
+            background-color: #d97706; /* Wood tone */
+            padding: 10px;
+            border-radius: 4px;
+            /* Subtle grid lines */
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px);
+        }
+        div[data-testid="stButton"] button {
+            border-radius: 50%;
+            background-color: rgba(0,0,0,0.05); /* Very subtle empty space */
+            border: none;
+        }
+        """
+    else: # tic_tac_toe
+        css += """
+        /* Modern dark stone aesthetic */
+        div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stHorizontalBlock"] {
+            background-color: #2b2b36;
+            padding: 5px;
+            border-radius: 12px;
+        }
+        div[data-testid="stButton"] button {
+            border-radius: 12px;
+            background-color: #1e1e28;
+            border: 2px solid #3a3a4a;
+        }
+        """
+        
+    css += "</style>"
+    st.markdown(css, unsafe_allow_html=True)
+
 
 def render_board(game, state, depth):
     st.subheader("Playable AI Game")
     st.caption(f"Turn: {game.current_player(state)}")
+    
+    # Inject the specific CSS for the currently detected game
+    inject_dynamic_css(game.name)
+    
     board = state["board"]
     for r, row in enumerate(board):
         cols = st.columns(len(row))
         for c, cell in enumerate(row):
-            label = " " if cell == EMPTY else cell
+            # Use the new mapping function instead of raw 'X' and 'O'
+            label = get_piece_label(game.name, cell)
+            
             disabled = (r, c) not in game.legal_moves(state) or game.is_terminal(state)
             if game.name == "connect_four":
                 disabled = c not in game.legal_moves(state) or game.is_terminal(state)
+                
             with cols[c]:
                 if st.button(label, key=f"cell_{game.name}_{r}_{c}", disabled=disabled, use_container_width=True):
                     move = c if game.name == "connect_four" else (r, c)
                     st.session_state.game_state = game.apply_move(state, move)
                     st.rerun()
+                    
     legal = game.legal_moves(st.session_state.game_state)
     if legal == ["pass"] and st.button("Pass"):
         st.session_state.game_state = game.apply_move(st.session_state.game_state, "pass")
         st.rerun()
+        
     left, right = st.columns(2)
     with left:
         if st.button("AI Move", disabled=game.is_terminal(st.session_state.game_state), use_container_width=True):
@@ -66,6 +180,7 @@ def render_board(game, state, depth):
             st.session_state.game_state = game.initial_state()
             st.session_state.last_ai = None
             st.rerun()
+            
     if st.session_state.get("last_ai"):
         st.info(f"AI chose {st.session_state.last_ai['move']} with score {st.session_state.last_ai['score']}.")
     if game.is_terminal(st.session_state.game_state):

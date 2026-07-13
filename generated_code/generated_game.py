@@ -1,17 +1,8 @@
-"""Generated safe adapter for tic_tac_toe."""
+"""Generated safe adapter for connect_four (Fallback)."""
 
 from src.game_interface import get_game
 
-
-GAME_NAME = "tic_tac_toe"
-
+GAME_NAME = "connect_four"
 
 def make_game():
     return get_game(GAME_NAME)
-
-
-def smoke_test():
-    game = make_game()
-    state = game.initial_state()
-    moves = game.legal_moves(state)
-    return bool(moves), game.current_player(state)
