@@ -1,7 +1,6 @@
-"""Generated Streamlit helper metadata for tic_tac_toe."""
+"""Generated Streamlit helper metadata for connect_four."""
 
-GAME_LABEL = "Tic Tac Toe"
-
+GAME_LABEL = "Connect Four"
 
 def describe_generated_game():
-    return {"label": GAME_LABEL, "source": "safe deterministic generator"}
+    return {"label": GAME_LABEL, "source": "LLM generation via llama3.2:3b"}

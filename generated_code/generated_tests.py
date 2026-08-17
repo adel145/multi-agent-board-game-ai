@@ -1,8 +1,7 @@
-"""Generated smoke tests for tic_tac_toe."""
+"""Generated smoke tests for connect_four."""
 
 from generated_code.generated_game import make_game
 from src.alpha_beta import alpha_beta_cutoff_search
-
 
 def run_generated_tests():
     game = make_game()

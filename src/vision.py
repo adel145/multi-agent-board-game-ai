@@ -17,9 +17,13 @@ class OllamaVisionClient:
 
     def describe(self, image_path):
         prompt = (
-            "Describe the board game image. Focus on grid size, symbols, discs, "
-            "stones, board orientation, and whether it resembles tic-tac-toe, "
-            "connect four, othello/reversi, or gomoku."
+            "Describe this stylized board game image. "
+            "It is one of these four games: "
+            "1) 'tic_tac_toe' (A small 3x3 grid, possibly carved in stone, with X and O shapes). "
+            "2) 'connect_four' (A vertically standing wooden board with circular holes, filled with metallic coins or tokens). "
+            "3) 'othello' (A flat, dark/green 8x8 board with pieces that are dark on one side and light on the other). "
+            "4) 'gomoku' (A large flat wooden board with a grid, featuring scattered black and white stones). "
+            "Describe the board's orientation (flat vs vertical), grid size, and piece type, then state which of the four games it most likely is."
         )
         try:
             image_b64 = base64.b64encode(Path(image_path).read_bytes()).decode("ascii")
@@ -35,7 +39,7 @@ class OllamaVisionClient:
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=45) as response:
+            with urllib.request.urlopen(req, timeout=300) as response:
                 data = json.loads(response.read().decode("utf-8"))
                 return data.get("response", "").strip(), True
         except (OSError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
