@@ -80,42 +80,67 @@ def inject_dynamic_css(game_name):
             border-radius: 12px;
             box-shadow: inset 0 -4px 10px rgba(0,0,0,0.5);
         }
-        /* Circular cutouts for the board */
+        /* Fix the board cutouts and text color */
         div[data-testid="stButton"] button {
-            border-radius: 50%;
-            background-color: #0f172a; /* Dark empty hole */
-            border: 3px solid #1e3a8a;
+            border-radius: 50px !important; /* 50px makes circles for the board, and pill-shapes for wide buttons */
+            background-color: #0f172a !important; /* Dark empty hole */
+            border: 3px solid #1e3a8a !important;
+            color: #ffffff !important; /* Forces text to be pure white */
+        }
+        div[data-testid="stButton"] button:hover {
+            background-color: #1e3a8a !important;
+            color: #ffffff !important;
         }
         """
     elif game_name == "othello":
         css += """
-        /* Green felt board with wood borders */
+        /* Green felt board container with wood border */
         div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stHorizontalBlock"] {
             background-color: #166534; /* Dark green felt */
             padding: 8px;
             border-radius: 4px;
             border: 6px solid #452c10; /* Wood border */
         }
+        /* Othello cells and action buttons */
         div[data-testid="stButton"] button {
-            border-radius: 50%;
-            background-color: #14532d;
-            border: 1px solid #166534;
+            border-radius: 50px !important; /* Fixes oval stretching */
+            background-color: #14532d !important; /* Dark green felt tone */
+            border: 2px solid #166534 !important;
+            color: #ffffff !important; /* Stark white text for readability */
+        }
+        div[data-testid="stButton"] button:hover {
+            background-color: #166534 !important;
+            border: 2px solid #22c55e !important; /* Bright green highlight on hover */
+            color: #ffffff !important;
+        }
+        /* Scale piece markers */
+        div[data-testid="stButton"] button p {
+            font-size: 32px !important;
+            line-height: 1;
+            margin: 0;
+            padding: 0;
         }
         """
     elif game_name == "gomoku":
         css += """
-        /* Light wooden Go board */
-        div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stHorizontalBlock"] {
-            background-color: #d97706; /* Wood tone */
-            padding: 10px;
-            border-radius: 4px;
-            /* Subtle grid lines */
-            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px);
-        }
+        /* Gomoku - Wooden grid aesthetic */
         div[data-testid="stButton"] button {
-            border-radius: 50%;
-            background-color: rgba(0,0,0,0.05); /* Very subtle empty space */
-            border: none;
+            background-color: #DEB887 !important; /* Classic wood board color */
+            border: 1px solid #8B5A2B !important; /* Dark brown grid lines */
+            border-radius: 0 !important; /* Square tiles to form a continuous board */
+            box-shadow: none !important;
+            height: 60px; /* Force height so it doesn't stretch into ovals */
+        }
+        div[data-testid="stButton"] button:hover {
+            background-color: #D2B48C !important;
+            border: 2px solid #5C3A21 !important;
+        }
+        /* Make the black and white stones massive and centered */
+        div[data-testid="stButton"] button p {
+            font-size: 40px !important; 
+            line-height: 1;
+            margin: 0;
+            padding: 0;
         }
         """
     else: # tic_tac_toe
@@ -127,9 +152,15 @@ def inject_dynamic_css(game_name):
             border-radius: 12px;
         }
         div[data-testid="stButton"] button {
-            border-radius: 12px;
-            background-color: #1e1e28;
-            border: 2px solid #3a3a4a;
+            border-radius: 12px !important;
+            background-color: #1e1e28 !important;
+            border: 2px solid #3a3a4a !important;
+            color: #ffffff !important; /* Forces the text to be stark white */
+        }
+        div[data-testid="stButton"] button:hover {
+            background-color: #2b2b36 !important;
+            border: 2px solid #5a5a7a !important;
+            color: #ffffff !important;
         }
         """
         
@@ -139,7 +170,15 @@ def inject_dynamic_css(game_name):
 
 def render_board(game, state, depth):
     st.subheader("Playable AI Game")
-    st.caption(f"Turn: {game.current_player(state)}")
+    
+    # --- SAFETY NET FIX ---
+    if callable(getattr(game, 'current_player', None)):
+        turn_info = game.current_player(state)
+    else:
+        turn_info = getattr(game, 'current_player', "Unknown")
+        
+    st.caption(f"Turn: {turn_info}")
+    # ----------------------
     
     # Inject the specific CSS for the currently detected game
     inject_dynamic_css(game.name)
@@ -182,7 +221,21 @@ def render_board(game, state, depth):
     if st.session_state.get("last_ai"):
         st.info(f"AI chose {st.session_state.last_ai['move']} with score {st.session_state.last_ai['score']}.")
     if game.is_terminal(st.session_state.game_state):
-        st.success(f"Game over. Utility for X: {game.utility(st.session_state.game_state, 'X')}")
+        # Get the raw mathematical score
+        score = game.utility(st.session_state.game_state, 'X')
+        
+        # Grab the emojis/symbols for the specific game to make the message look great
+        x_label = get_piece_label(game.name, 'X')
+        o_label = get_piece_label(game.name, 'O')
+        
+        # Translate the score into a beautiful UI message
+        if score > 0:
+            st.success(f"🎉 **Game Over: You Win!  ({x_label}) dominates!**")
+            st.balloons() # Triggers a fun celebration animation on the screen
+        elif score < 0:
+            st.error(f"🤖 **Game Over: AI Wins!  ({o_label}) beat you!**")
+        else:
+            st.info("🤝 **Game Over: It's a Draw!**")
 
 
 def main():

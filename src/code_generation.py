@@ -20,6 +20,22 @@ def prompt_llm_for_code(spec):
     
     The class MUST implement these exact methods to match the system interface:
     {interface}
+
+    =========================================================
+    CRITICAL ARCHITECTURE & NAMING RULES TO PREVENT SHADOWING
+    =========================================================
+    1. `current_player` MUST be a method, NOT an integer attribute. 
+    2. Do NOT define `self.current_player = ...` in the __init__ method.
+    3. You must implement it exactly with this signature:
+
+    def current_player(self, state):
+        # Return the integer of the player whose turn it is in the given state
+        pass
+    
+    CRITICAL GRADING REQUIREMENT:
+    You must also include a fully functioning Minimax algorithm with Alpha-Beta pruning directly inside this class. 
+    Implement a method called `get_best_move(self, state, depth)` that uses a helper method `alpha_beta(self, state, depth, alpha, beta, maximizing_player)` to return the optimal move. 
+    It must correctly implement maximizing/minimizing logic, terminal scoring, cutoff depth limits, and a reasonable heuristic evaluation function.
     
     At the very end of the file, you MUST include a standalone function named `make_game()` that returns an instance of your class.
     

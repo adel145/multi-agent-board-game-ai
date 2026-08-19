@@ -126,9 +126,9 @@ class ConnectFourGame(BoardGame):
     def utility(self, state, player):
         win = self.winner(state["board"])
         if win == player:
-            return 100000
+            return "You win!"
         if win == opponent(player):
-            return -100000
+            return "You lose!"
         return 0
 
     def evaluate(self, state, player):
@@ -180,9 +180,9 @@ class GomokuGame(BoardGame):
     def utility(self, state, player):
         win = self.winner(state["board"])
         if win == player:
-            return 1000000
+            return "You win!"
         if win == opponent(player):
-            return -1000000
+            return "You lose!"
         return 0
 
     def evaluate(self, state, player):
